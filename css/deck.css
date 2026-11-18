@@ -251,6 +251,8 @@ html, body { background: var(--paper); }
 .dbars .fill.exp { background: var(--ink); }
 .dbars .val { font-family: var(--mono); font-size: 26px; }
 .tnote { font-size: 24px; color: var(--muted); margin-top: 28px !important; }
+.tnote b { color: var(--ink); font-weight: 600; }
+.train h3 .hsub { font-family: var(--mono); font-size: 20px; font-weight: 400; color: var(--muted); letter-spacing: 0.06em; margin-left: 14px; }
 .lossbig { font-size: 44px; margin-bottom: 26px; }
 .lossparts { display: grid; grid-template-columns: 110px 1fr; row-gap: 14px; font-size: 26px; color: var(--muted); align-items: baseline; margin-bottom: 44px; }
 .lossparts > div:nth-child(odd) { color: var(--ink); font-size: 30px; }

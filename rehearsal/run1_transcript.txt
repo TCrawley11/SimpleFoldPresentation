@@ -1,0 +1,176 @@
+[0:00.91] Hello everyone, today I would like to discuss SimpleFold
+[0:05.55] and the idea is that folding proteins is simpler than you think
+[0:09.25] if you recognize that from attention, it's great
+[0:13.71] and so SimpleFold kind of explores the idea of what if AlphaFold's cleverest parts weren't necessary
+[0:21.89] so these are 920 noisy points
+[0:29.62] and by the end of the talk you'll understand how SimpleFold turns these noisy atoms into a folded protein
+[0:40.45] so a protein, a protein is a string of letters, right, so there are 20 kinds, each written as a letter
+[0:47.63] and this one, for example, has 117
+[0:51.77] so the chain folds by itself into one specific 3D shape
+[0:55.31] and that shape is what does the work
+[0:57.47] so shapes determine how proteins interact with other molecules which directly affects its function
+[1:04.63] a misfolded or lost shape means disaster for the protein's functionality
+[1:09.97] so this, for example, is transthyrotin
+[1:16.35] it carries thyroid hormones in the blood
+[1:19.73] so when it misfolds, it clumps up into amyloid fibrilis which causes heart and nerve disease
+[1:25.79] so the drug Taphamidus works by holding the folded shape together
+[1:30.07] so that kind of shows the idea that shape is equal to function
+[1:34.45] and so using those functions we can determine specific medicines that may address those misfolded proteins
+[1:44.07] so protein folding models were created since measuring a structure experimentally takes months
+[1:49.39] but reading a sequence such as this one here with 117 amino acids is cheap
+[1:55.19] so that leaves far more known sequences than known structures
+[1:58.99] so we want a model that takes in these sequences and outputs 3D coordinates
+[2:08.34] so now I'll discuss the main ideas that models like AlphaFold2 hardcode into their architecture
+[2:12.94] so they're designed hardcodes our understanding instead of learning from data
+[2:17.80] it's expensive and MSA-based models do worse on orphan proteins
+[2:23.08] so those are proteins with few or known or
+[2:26.88] which are proteins with few or no known relatives
+[2:32.32] so MSA right so that's multiple sequence alignment
+[2:35.20] which is the process of looking at the same proteins in many species
+[2:38.78] so for example here it's highlighting position 5 and 14
+[2:43.88] and maybe here we can see that when position 5 changes
+[2:47.14] position 14 changes or vice versa right so
+[2:51.22] MSA is used to look at interactions between different amino acids
+[2:57.98] and then compare with other species to kind of draw conclusions
+[3:02.74] so then the second part is pair representations
+[3:06.52] so besides one vector per residue AlphaFold2 keeps one vector for every pair of residues
+[3:14.28] so this is a real distance map of our protein
+[3:20.70] and so yeah that part needs some work
+[3:24.34] and then the third part is triangle updates
+[3:26.62] so to update a pair ij you would have to look at every third residue k
+[3:31.78] so if i is near k and k is near j then i can't be far from j
+[3:36.32] right so the triangle inequality is built into the architecture
+[3:41.32] so all three of these are our biological knowledge
+[3:44.66] and we kind of force it into the model in this case it was AlphaFold2
+[3:51.95] so that machinery is very expensive and we are already seeing a trend
+[3:57.13] that other fields are dropping they're kind of hard-coded or hand-built features
+[4:02.35] so the most obvious example probably is vision
+[4:07.25] for vision we started off with very crude feature extractors
+[4:12.41] so we're trying to hard code our understanding for example MNIST
+[4:17.27] MNIST is a challenge where you have to create a model that identifies hand-drawn digits
+[4:25.91] from zero to nine and so for that task we have feature extractors
+[4:31.60] that looked at how the pixels were structured
+[4:37.09] so for example we look at a zero and we know it's a zero because it's a circular structure
+[4:41.87] so in early vision implementation vision model implementations they hard-coded stuff like that
+[4:50.67] now we've gotten to a point where our transformers right so this is kind of from
+[4:54.63] the bitter lesson that general methods scale that scale with compute tend to beat hand-built
+[4:59.41] knowledge in the long run another example is language so we got rid of these grammar rules
+[5:05.89] these bigram kind of models we just ended up throwing transformers at it
+[5:10.33] in tons of data tons of compute so why in biology do we still have msa pair tables triangles
+[5:16.79] right so simple folders trying to address that bitter lesson so this folding really need them
+[5:26.78] so the researchers here they want they like to draw conclude a comparison to text to image models
+[5:33.40] right so here's an example this top this top example is a text to image example with diffusion
+[5:43.38] so if you're not familiar with diffusion you start off with noise
+[5:47.28] and then you have a prompt so here it's the great wave with block print and so that
+[5:52.18] that prompt conditions how the noise will be transformed over time
+[5:59.22] right so simple fold uses the same idea you have xt which is a noisy
+[6:07.92] atom structure so this epsilon here this epsilon term is a noisy distribution so for example like
+[6:14.62] a gaussian you can attach a gaussian over the time step to the ground truth atom structure
+[6:20.72] you get a noisy atom structure so in simple fold the comparison is that the amino acid is the
+[6:27.74] prompt the output isn't pixels though it's xyz coordinates for every atom so you have a blend
+[6:34.50] of noise and data with t going from zero to one so there's no msa no pair tables and no triangles
+[6:40.30] just generate a structure conditioned on a sequence so now talk a little bit about the idea of flow
+[6:48.73] matching so simple fold is the first generative flow matching model right so flow matching is
+[6:58.17] flow matching generative models approach generation as a time-dependent process
+[7:01.99] that moves noise to data through integrating an ordinary differential equation over time
+[7:08.39] so we want to distribute structures
+[7:11.81] so so we start off with the noise right so these are the noisy points here
+[7:18.45] these great great dots and so this is kind of like that noisy distribution that i just
+[7:26.67] kind of talked about earlier so we start off with that and then we're trying to define a velocity
+[7:34.09] field over time that describes how these atoms should move from the noisy
+[7:40.71] noisy distribution to the ground truth distribution so here i have an animation for training this
+[7:48.44] is what you do and you basically train on these lines or you train to produce these lines here
+[7:57.08] which describe how a noisy atom should move to be ground truth and then here's a sampling example
+[8:20.09] so this is the ode that you integrate over from zero from t equals zero to one
+[8:26.03] and so this is the velocity field so now i'll talk a little bit about the architecture
+[8:35.17] so simple fold begins with noisy atoms right that we just talked about and there's an atom encoder
+[8:42.89] so the atom encoder is a small transformer where each atom only attends to atoms in nearby
+[8:48.31] residues so this outputs atom tokens then there's a grouping operation and a residue trunk block
+[8:57.10] so the grouping operation performs average pooling which groups all the atoms of a
+[9:01.90] residue into one token so 920 tokens becomes 117 the residue trunk is a stack of standard
+[9:10.16] transformer blocks and holds almost all of the parameters and compute and the residue trunk
+[9:15.22] outputs residue tokens then we get the amino acid sequence so to get the amino acid sequence
+[9:25.20] we use a frozen plm right sorry they use a frozen plm in this case it was esm2 3b
+[9:33.18] and it so it's per residue embeddings are concatenated onto the residue tokens to
+[9:38.08] create per residue conditioning embeddings right so it takes an amino acid
+[9:45.42] and it outputs per residue embeddings so then those per residue embeddings
+[9:52.64] are concatenated to the residue tokens which are from the group grouping operation
+[10:01.00] then the ungrouping operation takes those per residue atom tokens
+[10:09.75] and projects them to corresponding atom tokens so also notice that there's a skip connection
+[10:17.51] right here there's a skip connection from the atom encoder to the atom decoder
+[10:22.33] and so that skip connection is used for two things in general skip connections are used
+[10:28.72] to minimize the problem of the vanishing gradient so as you may know gradients
+[10:35.48] when you multiply two decimal numbers together they get smaller so you can have gradients that
+[10:43.49] continuously shrink so you you can use a skip connection to keep larger gradients
+[10:50.54] and then the other reason to use skip connections is to maintain or to preserve some of the
+[10:57.63] information from earlier stages for later stages so in this case the encoder passes
+[11:03.05] structural information which lets the decoder tell atoms of the same residue apart
+[11:08.77] then with the per residue tokens and the structural information from the skip connection
+[11:18.89] the decoder outputs one 3d arrow per atom so in this case 920 atoms 920
+[11:29.11] 920 arrows or velocity fields so then here's a closer look at one block
+[11:39.87] and so notice that every part of the block is borrowed meaning that
+[11:44.67] none of this is really new the new part is the application of it to folding protein folding
+[11:53.43] so just quickly go through some of the some of the parts of attention of the transformer block
+[11:59.43] that were taken from different papers in the past so we begin with a layer norm
+[12:05.15] layer norm is from a diffusion transformer
+[12:10.63] and it basically just normalizes the tokens right then you have self-attention
+[12:20.99] specifically the vision transformer 22b and stable diffusion
+[12:27.27] self-attention block where they use query key normalization
+[12:31.27] so they normalize queries and keys so attention logits can can't blow up
+[12:37.11] then you have a swish gated linear unit here in the feed forward which is just a better activation
+[12:46.63] function so it kind of looks like this and then it blows up after zero
+[12:51.99] and that just produces smoother uh smoother gradients and doesn't you know because
+[12:58.61] originally we had a relu which is just zero or one after so it's zero up until zero
+[13:05.10] and then one after zero but with a with a swish gated linear unit it's a little smoother right
+[13:14.47] and then finally they also use rope which is which stands for rotary position embeddings
+[13:21.26] and interestingly they actually use a 4d rope so the first three axes are 3d atomic
+[13:28.77] coordinates from reference conformers and then you have a local structure which is predicted
+[13:32.97] at the top at the amino acid level by rule-based method then the last axis is the 1d indexing to
+[13:40.25] the corresponding residue token so the takeaway here is that nothing was invented for proteins
+[13:47.54] they just took the best current parts from image models and language models so now I'll
+[13:54.64] talk a little bit about the training methodology that they used so taking a look at the training
+[13:59.94] data they used kind of three sources which would be pdb swiss prop and afesm so they use 160k
+[14:09.02] samples from pdb they use 270k samples from swiss pro and then they used about two million samples
+[14:17.02] from afesm and then for the 3b model they actually created something called afesm extended
+[14:24.86] which just took the most confident samples from esm and just made a larger data set
+[14:34.22] and so when they were distilling the data set they used a lost term so they used ldtt
+[14:40.72] which is local distance difference test to determine how confident these models or sorry
+[14:55.12] and then so they also did two stages where they did a pre-train on all of the data
+[15:01.76] and then they did a fine tune where they did just a subset of the data
+[15:09.20] and then they increased the ldtt weight which means that they were more harsh on bad estimates
+[15:17.70] afterwards they also trained a small confidence head so pldtt which is which stands for predicted
+[15:23.30] local distance difference test with the folding model actually frozen so basically they attached a
+[15:29.32] head that gives the confidence of the actual folding model so simple fold had a confidence
+[15:36.62] head basically and then here i wanted to draw comparisons to alpha fold and how simple fold
+[15:44.51] was able to replace parts of it so the msa search was replaced by protein language model
+[15:52.15] other paired table and triangles were replaced with plane attention
+[15:56.51] the equivariant layers were replaced with random rotations
+[16:00.45] and the many custom losses were were replaced with one generative loss
+[16:08.13] so notice that the loss term is actually probably the largest difference or the
+[16:13.87] tension is probably the largest difference but the loss from a machine learning
+[16:17.91] perspective is very interesting because alpha fold 2 used specific losses for protein folding models
+[16:25.51] but in simple fold they use a standard loss term and it's only one so it's a lot smoother to train
+[16:32.69] a lot more stable so the results are that it's actually close to alpha fold 2 but not
+[16:41.12] necessarily better it's just very comparable so for example on cameo 22 simple fold 3b gets about
+[16:49.87] 97 percent of alpha fold 2 score and even the hundred hundred million parameter model is
+[16:55.97] respectable on casp 14 which is the harder set there is a real gap but it beats yes unfold
+[17:05.43] which is a fair comparison because esm doesn't use msa so bigger models help much more on the hard
+[17:13.01] set right so again like we discussed in previous presentations larger models can account for
+[17:19.91] more unique structures so that's kind of where the parameter difference is shown
+[17:26.83] so the claim really that they make here with these results is that it's nearly as good
+[17:32.17] with none of the special expensive parts so kind of like going through what you gain
+[17:40.88] the main differences are that alpha fold 2 it treats the folding task like a deterministic task
+[17:48.54] right so it gives one answer while this simple fold model which is a generated folding model
+[17:58.60] it provides several plausible structures so this is more akin to how proteins behave in real life
+[18:07.88] because proteins flex they change they have multiple states and also we can talk about
+[18:12.92] the compute so notice that alpha fold 2 has a fraction of the parameters of simple fold
+[18:20.96] but it requires about 31 teraflops for one forward pass compared to simple folds
+[18:31.14] one so simple fold has 30 times the parameters but needs about 20 times fewer flops per pass
+[18:40.76] it can even run on a laptop too which is very cool so the critical takeaway is that it's simpler
+[18:49.81] with asterisks right so the biology moved meaning that instead of hard coding our knowledge our
+[19:00.13] biological knowledge that data became an objective for the model to learn it isn't just copying alpha
+[19:09.01] fold as well to train only on real structures plus its own predictions yeah this slide needs
+[19:16.43] to be changed so the takeaway is that folding is mostly text to image a general transformer
+[19:27.60] a flow matching objective and a lot of data get within a few percent of alpha fold too
+[19:32.26] with none of its special parts in the fraction of the compute turns out that folding is a lot
+[19:38.76] like text to image

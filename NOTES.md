@@ -82,7 +82,19 @@ Rubric: problem definition 30%, solution idea (memorable) 30%, slide clarity 10%
 - Baselines in Table 1 were rerun by the authors (ColabFold for AF2/RF/ESMFold, AF2 without templates).
 - Verified with tools/shoot.py (all slides) and tools/shoot_one.py N out.png 2 (one slide at 2x for detail crops), headless Chromium, no console errors. Block diagram (slide 8) redrawn on a uniform grid. Not yet checked on Tygo's Intel Mac / projector.
 
+## Rehearsals
+
+- rehearsal/runN.m4a (gitignored) -> `python3 tools/transcribe.py rehearsal/runN.m4a` (faster-whisper small.en, ~12 min CPU)
+  -> runN_transcript.txt/json -> runN_review.md (per-slide timing vs Notion targets, technical errors, fillers, pauses).
+- Run 1: 19:42. Run 2: 17:43; time skewed to slides 7-8, slides 3 and 6 short; repeated pLDDT/LDDT mix-up on slide 9.
+- After run 2: slide 9 relabelled ("1 · Pick the data, filter: pLDDT" / "2 · Train the model, loss: FM + LDDT");
+  slide 7 build order now group -> ESM2 + trunk -> ungroup/decoder (sequence joins before the trunk); Notion notes match.
+
+## Repo
+
+- GitHub: TCrawley11/SimpleFoldPresentation (main). This folder is a clone; Tygo pushes from the host if the sandbox token is refused.
+
 ## Next steps
 
-1. Tygo: copy to host ~/code, open index.html on the Mac, rehearse with the printed notes and a timer.
+1. Rehearse again; target slide 6 ~2:30 and slide 7 ~1:45.
 2. If over time: trim slide 10 (swaps recap) first.

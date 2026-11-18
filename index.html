@@ -239,19 +239,15 @@
           <text x="315" y="340" text-anchor="middle" class="lbl">encoder</text>
           <text x="315" y="420" text-anchor="middle" class="shape">920 × d</text>
         </g>
-        <!-- group + trunk -->
+        <!-- group -->
         <g class="fragment">
           <path class="wire" d="M430 310 H466"/>
           <path class="op" d="M470 250 L600 280 L600 340 L470 370 Z"/>
           <text x="535" y="318" text-anchor="middle" class="sub opl">group</text>
           <text x="535" y="420" text-anchor="middle" class="shape">117 × d</text>
           <text x="535" y="452" text-anchor="middle" class="sub">avg atoms → residue</text>
-          <path class="wire" d="M600 310 H646"/>
-          <rect class="trunk" x="650" y="210" width="380" height="200" rx="12"/>
-          <text x="840" y="300" text-anchor="middle" class="lbl">Residue trunk</text>
-          <text x="840" y="336" text-anchor="middle" class="sub">most of the parameters and compute</text>
         </g>
-        <!-- ESM2 conditioning -->
+        <!-- ESM2 conditioning + residue trunk (sequence joins before the trunk) -->
         <g class="fragment">
           <rect class="frozen" x="650" y="20" width="380" height="110" rx="12"/>
           <text x="840" y="66" text-anchor="middle" class="lbl">ESM2-3B protein LM</text>
@@ -261,6 +257,10 @@
           <path class="wire" d="M560 76 H646"/>
           <path class="wire" d="M840 130 V206"/>
           <text x="856" y="176" class="sub">concat per residue</text>
+          <path class="wire" d="M600 310 H646"/>
+          <rect class="trunk" x="650" y="210" width="380" height="200" rx="12"/>
+          <text x="840" y="300" text-anchor="middle" class="lbl">Residue trunk</text>
+          <text x="840" y="336" text-anchor="middle" class="sub">most of the parameters and compute</text>
         </g>
         <!-- ungroup + decoder + skip + output -->
         <g class="fragment">
@@ -362,7 +362,7 @@
     </header>
     <div class="body train">
       <div>
-        <h3>Training data</h3>
+        <h3>1 · Pick the data <span class="hsub">filter: pLDDT</span></h3>
         <div class="dbars">
           <div class="name">PDB<span class="muted">experimental</span></div>
           <div class="track"><div class="fill exp" style="width:8px"></div><span class="val">160K</span></div>
@@ -373,10 +373,10 @@
           <div class="name">AFESM-E<span class="muted">3B model only</span></div>
           <div class="track"><div class="fill" style="width:440px"></div><span class="val">8.6M</span></div>
         </div>
-        <p class="tnote">Predictions kept only when the predicting model was confident (high pLDDT).</p>
+        <p class="tnote">Predicted structures kept only if the model that predicted them was confident: <b>pLDDT</b> above 80 to 85. Done once, before training.</p>
       </div>
       <div>
-        <h3>Loss</h3>
+        <h3>2 · Train the model <span class="hsub">loss: FM + LDDT</span></h3>
         <div class="tex lossbig" data-tex="\mathcal{L} = \mathcal{L}_{FM} + \alpha(t)\,\mathcal{L}_{LDDT}"></div>
         <div class="lossparts">
           <div><span class="tex" data-tex="\mathcal{L}_{FM}"></span></div><div>match the velocity (the arrows from the flow slide)</div>
