@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SimpleFold: Folding Proteins is Simpler than You Think</title>
+<link rel="stylesheet" href="vendor/reveal/reset.css">
+<link rel="stylesheet" href="vendor/reveal/reveal.css">
+<link rel="stylesheet" href="vendor/katex/katex.min.css">
+<link rel="stylesheet" href="css/deck.css">
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1 ======================================================== HOOK -->
+<section id="s-hook">
+  <div class="hook">
+    <div class="left">
+      <div class="kicker">Paper presentation</div>
+      <h1>SimpleFold</h1>
+      <div class="sub">Folding Proteins is Simpler than You Think</div>
+      <div class="byline">Wang, Lu, Jaitly, Susskind, Bautista · Apple<br>arXiv 2509.18480 · presented by Tygo Crawley</div>
+      <div class="question fragment" data-fold="play">What if AlphaFold's cleverest parts weren't necessary?</div>
+    </div>
+    <div class="stage">
+      <canvas id="hook-canvas" aria-label="Animation: a cloud of random points moving into a folded protein"></canvas>
+      <div class="stage-caption">t = <span class="tval" id="hook-t">0.00</span> · noise → SimpleFold-3B output</div>
+    </div>
+  </div>
+</section>
+
+<!-- 2 ======================================================== PROBLEM: sequence -> shape -> function -->
+<section id="s-problem">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Problem</b> · protein folding</div>
+      <h2>A string of letters decides a 3D shape, and the shape decides the job</h2>
+    </header>
+    <div class="body ssf">
+      <div>
+        <div class="label">Sequence · 117 amino acids</div>
+        <div class="seq" id="seq"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div>
+        <div class="label">Structure · 920 atoms in 3D</div>
+        <div class="mol" id="mol"></div>
+      </div>
+      <div class="arrow">→</div>
+      <div class="fn">
+        <div class="label">Function</div>
+        <p>Transthyretin carries thyroid hormone in the blood.</p>
+        <p>When it loses its shape it clumps into amyloid fibrils: heart and nerve disease.</p>
+        <p class="muted">The drug tafamidis works by holding the shape together.</p>
+      </div>
+    </div>
+    <div class="source">Predicting the right column from the left column is <i>protein folding</i>. Structure shown: SimpleFold-3B prediction for transthyretin (PDB 7RLK, wallaby).</div>
+  </div>
+</section>
+
+<!-- 3 ======================================================== PROBLEM: AF2's three ideas -->
+<section id="s-af2">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Problem</b> · how AlphaFold2 does it</div>
+      <h2>AlphaFold2 hard-codes three ideas about biology</h2>
+    </header>
+    <div class="body three">
+      <div class="col">
+        <div class="pic"><div class="msa" id="msa"></div></div>
+        <h3>1 · Multiple sequence alignment</h3>
+        <p>Search databases for the same protein in other species. Positions that mutate together are probably touching.</p>
+      </div>
+      <div class="col">
+        <div class="pic"><canvas id="distmap" style="width:400px;height:400px" aria-label="117 by 117 distance map"></canvas></div>
+        <h3>2 · Pair representation</h3>
+        <p>Keep a feature for every pair of residues: an N × N table, updated through the whole network.</p>
+      </div>
+      <div class="col">
+        <div class="pic">
+          <svg width="420" height="400" viewBox="0 0 420 400" aria-label="triangle of residues i, j, k">
+            <line x1="70" y1="320" x2="350" y2="320" stroke="#b4482c" stroke-width="5"/>
+            <line x1="70" y1="320" x2="210" y2="80" stroke="#a9acb2" stroke-width="3" stroke-dasharray="10 8"/>
+            <line x1="350" y1="320" x2="210" y2="80" stroke="#a9acb2" stroke-width="3" stroke-dasharray="10 8"/>
+            <circle cx="70" cy="320" r="30" fill="#fafaf7" stroke="#17191e" stroke-width="2.5"/>
+            <circle cx="350" cy="320" r="30" fill="#fafaf7" stroke="#17191e" stroke-width="2.5"/>
+            <circle cx="210" cy="80" r="30" fill="#fafaf7" stroke="#17191e" stroke-width="2.5"/>
+            <text x="70" y="330" text-anchor="middle" font-family="Plex Mono" font-size="28">i</text>
+            <text x="350" y="330" text-anchor="middle" font-family="Plex Mono" font-size="28">j</text>
+            <text x="210" y="90" text-anchor="middle" font-family="Plex Mono" font-size="28">k</text>
+            <text x="210" y="372" text-anchor="middle" font-family="Plex Sans" font-size="22" fill="#b4482c">update (i, j) …</text>
+            <text x="250" y="70" font-family="Plex Sans" font-size="22" fill="#676b73">… using every k</text>
+          </svg>
+        </div>
+        <h3>3 · Triangle updates</h3>
+        <p>Update pair (i, j) by looking at every third residue k, so the distances stay geometrically consistent.</p>
+      </div>
+    </div>
+    <div class="source">Left: illustrative alignment around the real transthyretin sequence. Middle: real 117 × 117 residue distance map of the structure on the last slide (dark = close).</div>
+  </div>
+</section>
+
+<!-- 4 ======================================================== PROBLEM: cost + question -->
+<section id="s-cost">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Problem</b> · the cost, and the question</div>
+      <h2>That machinery is expensive. Other fields dropped theirs.</h2>
+    </header>
+    <div class="body cost">
+      <div>
+        <p class="muted small" style="margin-bottom:28px">For a protein of N = 1,000 residues</p>
+        <div class="stairs">
+          <div class="n">1,000</div><div class="what">residues: one vector each</div>
+          <div class="n rust">1,000,000</div><div class="what">pairs in the pair table (N²)</div>
+          <div class="n rust">1,000,000,000</div><div class="what">triangles per update (N³)</div>
+        </div>
+      </div>
+      <div>
+        <div class="lesson">
+          <div class="dom">Vision</div><div><s>hand-built features</s> → transformers + data</div>
+          <div class="dom">Language</div><div><s>grammar rules</s> → transformers + data</div>
+          <div class="dom">Folding</div><div><span class="rust">MSA, pair table, triangles</span> → ?</div>
+          <div></div><div class="q fragment">Does folding really need them?</div>
+        </div>
+      </div>
+    </div>
+    <div class="source">"The bitter lesson" (Sutton, 2019): general methods that scale with compute tend to beat hand-built knowledge in the long run.</div>
+  </div>
+</section>
+
+<!-- 5 ======================================================== IDEA: reframe -->
+<section id="s-reframe">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Idea</b> · the one thing to remember</div>
+      <h2>Treat folding like text-to-image</h2>
+    </header>
+    <div class="body reframe">
+      <div class="pipe iframes">
+        <div class="prompt"><span class="tag">Text-to-image</span><span class="txt">"the great wave, woodblock print"</span></div>
+        <div><canvas data-t="0"></canvas><div class="tlabel">t = 0</div></div>
+        <div><canvas data-t="0.25"></canvas><div class="tlabel">0.25</div></div>
+        <div><canvas data-t="0.5"></canvas><div class="tlabel">0.5</div></div>
+        <div><canvas data-t="0.75"></canvas><div class="tlabel">0.75</div></div>
+        <div><canvas data-t="1"></canvas><div class="tlabel">1</div></div>
+        <div class="out">pixels</div>
+      </div>
+      <div class="shared">
+        <div class="muted small">Same recipe, same equation</div>
+        <div><span class="eq tex" data-tex="x_t = t\,x + (1-t)\,\varepsilon"></span> <span class="eqnote">&nbsp; noise ε at t = 0, data x at t = 1</span></div>
+      </div>
+      <div class="pipe pframes">
+        <div class="prompt"><span class="tag">SimpleFold</span><span class="txt">CPLMVKVLDAVRGRP…</span></div>
+        <div><canvas data-t="0"></canvas><div class="tlabel">t = 0</div></div>
+        <div><canvas data-t="0.25"></canvas><div class="tlabel">0.25</div></div>
+        <div><canvas data-t="0.5"></canvas><div class="tlabel">0.5</div></div>
+        <div><canvas data-t="0.75"></canvas><div class="tlabel">0.75</div></div>
+        <div><canvas data-t="1"></canvas><div class="tlabel">1</div></div>
+        <div class="out">atom coordinates</div>
+      </div>
+    </div>
+    <div class="source">The sequence plays the role of the text prompt; the 3D atom coordinates play the role of the image (paper §1, §2.2). Image: Hokusai, public domain.</div>
+  </div>
+</section>
+
+<!-- 6 ======================================================== IDEA: flow matching toy -->
+<section id="s-flow">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Idea</b> · flow matching</div>
+      <h2>Learn which way to move, from noise to data</h2>
+    </header>
+    <div class="body flow">
+      <div class="toy" id="toy">
+        <canvas aria-label="2D flow-matching toy"></canvas>
+        <div class="toy-controls">
+          <button data-mode="train" aria-pressed="true">Training</button>
+          <button data-mode="sample" aria-pressed="false">Sampling</button>
+          <button data-play>Play</button>
+          <input type="range" min="0" max="1000" value="350" aria-label="flow time t">
+          <span class="tread">t = 0.35</span>
+        </div>
+        <p class="toy-cap" aria-live="polite"></p>
+      </div>
+      <div class="eqs">
+        <div class="step"><div class="num">1</div><div>
+          <div class="what">Straight path from noise to a real structure</div>
+          <div class="tex" data-tex="x_t = t\,x + (1-t)\,\varepsilon, \quad \varepsilon \sim \mathcal{N}(0, I)"></div></div></div>
+        <div class="step"><div class="num">2</div><div>
+          <div class="what">Its velocity is constant: that's the target</div>
+          <div class="tex" data-tex="\dfrac{d x_t}{dt} = x - \varepsilon"></div></div></div>
+        <div class="step"><div class="num">3</div><div>
+          <div class="what">Regress the network onto it</div>
+          <div class="tex" data-tex="\mathcal{L}_{FM} = \mathbb{E}_{x,s,\varepsilon,t}\Big[\tfrac{1}{N_a}\big\| v_\theta(x_t, s, t) - (x - \varepsilon) \big\|^2\Big]"></div></div></div>
+        <div class="step"><div class="num">4</div><div>
+          <div class="what">To fold: start at noise, integrate from t = 0 to 1</div>
+          <div class="tex" data-tex="dx_t = v_\theta(x_t, s, t)\,dt"></div></div></div>
+        <div class="legend"><span><i style="background:#17191e"></i>x<sub>t</sub></span><span><i style="background:#b4482c"></i>target x − ε</span><span><i style="background:#0e7c7b"></i>data</span></div>
+      </div>
+    </div>
+    <div class="source">In SimpleFold each point is a whole protein: 920 atoms × 3 coordinates. <i>s</i> is the sequence. Paper §2.1-2.2, Eq. 2.1-2.2.</div>
+  </div>
+</section>
+
+<!-- 7 ======================================================== METHOD: architecture -->
+<section id="s-arch">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Method</b> · architecture</div>
+      <h2>A plain transformer sandwich predicts the arrows</h2>
+    </header>
+    <div class="body arch">
+      <svg viewBox="0 0 1680 580" aria-label="SimpleFold architecture">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#17191e"/></marker>
+          <marker id="arrowm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#676b73"/></marker>
+        </defs>
+        <!-- what is absent: top right, outside the data flow -->
+        <g>
+          <rect class="absent" x="1240" y="14" width="440" height="150" rx="10"/>
+          <text x="1264" y="56" class="lbl rustfill" style="font-size:26px">Not in here</text>
+          <text x="1264" y="96" class="sub">MSA search · pair table</text>
+          <text x="1264" y="132" class="sub">triangle updates · equivariant layers</text>
+        </g>
+        <!-- input + encoder -->
+        <g>
+          <g fill="#a9acb2">
+            <circle cx="40" cy="290" r="6"/><circle cx="75" cy="262" r="5"/><circle cx="102" cy="300" r="6"/><circle cx="58" cy="330" r="5"/>
+            <circle cx="120" cy="268" r="5"/><circle cx="88" cy="345" r="6"/><circle cx="30" cy="250" r="4"/><circle cx="128" cy="325" r="4"/>
+            <circle cx="66" cy="296" r="4"/><circle cx="110" cy="240" r="4"/><circle cx="45" cy="365" r="4"/>
+          </g>
+          <text x="80" y="420" text-anchor="middle" class="lbl" style="font-size:24px">noisy atoms</text>
+          <text x="80" y="452" text-anchor="middle" class="shape">x_t: 920 × 3</text>
+          <path class="wire" d="M150 310 H196"/>
+          <rect class="blk" x="200" y="240" width="230" height="140" rx="10"/>
+          <text x="315" y="303" text-anchor="middle" class="lbl">Atom</text>
+          <text x="315" y="340" text-anchor="middle" class="lbl">encoder</text>
+          <text x="315" y="420" text-anchor="middle" class="shape">920 × d</text>
+        </g>
+        <!-- group + trunk -->
+        <g class="fragment">
+          <path class="wire" d="M430 310 H466"/>
+          <path class="op" d="M470 250 L600 280 L600 340 L470 370 Z"/>
+          <text x="535" y="318" text-anchor="middle" class="sub opl">group</text>
+          <text x="535" y="420" text-anchor="middle" class="shape">117 × d</text>
+          <text x="535" y="452" text-anchor="middle" class="sub">avg atoms → residue</text>
+          <path class="wire" d="M600 310 H646"/>
+          <rect class="trunk" x="650" y="210" width="380" height="200" rx="12"/>
+          <text x="840" y="300" text-anchor="middle" class="lbl">Residue trunk</text>
+          <text x="840" y="336" text-anchor="middle" class="sub">most of the parameters and compute</text>
+        </g>
+        <!-- ESM2 conditioning -->
+        <g class="fragment">
+          <rect class="frozen" x="650" y="20" width="380" height="110" rx="12"/>
+          <text x="840" y="66" text-anchor="middle" class="lbl">ESM2-3B protein LM</text>
+          <text x="840" y="102" text-anchor="middle" class="sub">frozen, pretrained on sequences</text>
+          <text x="430" y="70" text-anchor="middle" class="mono" style="font-size:24px">CPLMVKVLDAV…</text>
+          <text x="430" y="104" text-anchor="middle" class="sub">sequence s</text>
+          <path class="wire" d="M560 76 H646"/>
+          <path class="wire" d="M840 130 V206"/>
+          <text x="856" y="176" class="sub">concat per residue</text>
+        </g>
+        <!-- ungroup + decoder + skip + output -->
+        <g class="fragment">
+          <path class="wire" d="M1030 310 H1066"/>
+          <path class="op" d="M1070 280 L1200 250 L1200 370 L1070 340 Z"/>
+          <text x="1135" y="318" text-anchor="middle" class="sub opl">ungroup</text>
+          <text x="1135" y="420" text-anchor="middle" class="shape">920 × d</text>
+          <text x="1135" y="452" text-anchor="middle" class="sub">copy residue → atoms</text>
+          <path class="wire" d="M1200 310 H1236"/>
+          <rect class="blk" x="1240" y="240" width="230" height="140" rx="10"/>
+          <text x="1355" y="303" text-anchor="middle" class="lbl">Atom</text>
+          <text x="1355" y="340" text-anchor="middle" class="lbl">decoder</text>
+          <path class="skip" d="M315 380 V500 H1290 V384"/>
+          <text x="800" y="540" text-anchor="middle" class="sub">skip connection: tells atoms of the same residue apart</text>
+          <path class="wire" d="M1470 310 H1530"/>
+          <text x="1600" y="296" text-anchor="middle" class="lbl">velocity</text>
+          <text x="1600" y="334" text-anchor="middle" class="shape">v̂: 920 × 3</text>
+        </g>
+      </svg>
+      <p class="archnote">Every box is the same standard transformer block. The timestep t enters each block through adaptive LayerNorm, as in image diffusion transformers (DiT). Next slide.</p>
+    </div>
+    <div class="source">Paper §2.3, Fig. 2. Shapes shown for the transthyretin example (920 heavy atoms, 117 residues).</div>
+  </div>
+</section>
+
+<!-- 8 ======================================================== METHOD: the transformer block -->
+<section id="s-block">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Method</b> · inside one block</div>
+      <h2>Every part of the block is borrowed</h2>
+    </header>
+    <div class="body block">
+      <svg viewBox="0 50 1680 350" aria-label="SimpleFold transformer block">
+        <defs>
+          <marker id="arrowb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#17191e"/></marker>
+          <marker id="arrowg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#a9acb2"/></marker>
+          <marker id="arrowt" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e7c7b"/></marker>
+        </defs>
+        <text x="0" y="232" class="bs">tokens</text>
+        <path class="bw0" d="M0 200 H40"/>
+        <circle cx="40" cy="200" r="5" class="dotj"/>
+        <path class="bw" d="M40 200 H80"/>
+        <rect class="bnorm" x="80" y="168" width="64" height="64" rx="8"/><text x="112" y="209" text-anchor="middle" class="bt">LN</text>
+        <path class="bw" d="M144 200 H184"/>
+        <rect class="bmod" x="184" y="168" width="160" height="64" rx="8"/><text x="264" y="209" text-anchor="middle" class="bt">scale, shift</text>
+        <path class="bw" d="M344 200 H384"/>
+        <rect class="battn" x="384" y="144" width="214" height="112" rx="8"/><text x="491" y="194" text-anchor="middle" class="bt bh">Self-attention</text><text x="491" y="228" text-anchor="middle" class="bs">QK-norm · RoPE</text>
+        <path class="bw" d="M598 200 H638"/>
+        <rect class="bmod" x="638" y="168" width="90" height="64" rx="8"/><text x="683" y="209" text-anchor="middle" class="bt">gate</text>
+        <path class="bw" d="M728 200 H768"/>
+        <circle cx="788" cy="200" r="20" class="plus"/><path class="pl" d="M779 200 H797 M788 191 V209"/>
+        <path class="res" d="M40 200 V90 H788 V180"/>
+        <text x="414" y="78" text-anchor="middle" class="bs">residual</text>
+        <path class="bw0" d="M808 200 H848"/>
+        <circle cx="848" cy="200" r="5" class="dotj"/>
+        <path class="bw" d="M848 200 H888"/>
+        <rect class="bnorm" x="888" y="168" width="64" height="64" rx="8"/><text x="920" y="209" text-anchor="middle" class="bt">LN</text>
+        <path class="bw" d="M952 200 H992"/>
+        <rect class="bmod" x="992" y="168" width="160" height="64" rx="8"/><text x="1072" y="209" text-anchor="middle" class="bt">scale, shift</text>
+        <path class="bw" d="M1152 200 H1192"/>
+        <rect class="bffn" x="1192" y="144" width="214" height="112" rx="8"/><text x="1299" y="194" text-anchor="middle" class="bt bh">Feed-forward</text><text x="1299" y="228" text-anchor="middle" class="bs">SwiGLU</text>
+        <path class="bw" d="M1406 200 H1446"/>
+        <rect class="bmod" x="1446" y="168" width="90" height="64" rx="8"/><text x="1491" y="209" text-anchor="middle" class="bt">gate</text>
+        <path class="bw" d="M1536 200 H1576"/>
+        <circle cx="1596" cy="200" r="20" class="plus"/><path class="pl" d="M1587 200 H1605 M1596 191 V209"/>
+        <path class="res" d="M848 200 V90 H1596 V180"/>
+        <text x="1222" y="78" text-anchor="middle" class="bs">residual</text>
+        <path class="bw" d="M1616 200 H1676"/>
+        <rect class="bt-mlp" x="0" y="302" width="150" height="56" rx="8"/><text x="75" y="338" text-anchor="middle" class="bt tealfill">t → MLP</text>
+        <path class="tw" d="M150 330 H1491"/>
+        <circle cx="264" cy="330" r="4" class="tdot"/><path class="twa" d="M264 330 V234"/>
+        <circle cx="683" cy="330" r="4" class="tdot"/><path class="twa" d="M683 330 V234"/>
+        <circle cx="1072" cy="330" r="4" class="tdot"/><path class="twa" d="M1072 330 V234"/>
+        <circle cx="1491" cy="330" r="4" class="tdot"/><path class="twa" d="M1491 330 V234"/>
+        <text x="0" y="390" class="bs tealfill">adaLN: one small MLP turns t into a scale, shift and gate for each half (6 vectors per block)</text>
+      </svg>
+      <div class="borrow">
+        <div><div class="bname">adaLN-Zero</div><div class="bfrom">DiT, image diffusion (2023)</div>
+          <p>t sets scale, shift and gate in every block. Gates start at zero, so each block starts as the identity.</p></div>
+        <div><div class="bname">QK-norm</div><div class="bfrom">ViT-22B, Stable Diffusion 3</div>
+          <p>Normalize queries and keys so attention logits can't blow up. Keeps big models stable.</p></div>
+        <div><div class="bname">SwiGLU</div><div class="bfrom">Shazeer 2020; PaLM, LLaMA</div>
+          <p>A gated feed-forward layer: better quality for the same compute.</p></div>
+        <div><div class="bname">RoPE</div><div class="bfrom">RoFormer; most LLMs</div>
+          <p>Position as a rotation of q and k. Atom layers use 4 axes: a 3D reference shape plus the residue index.</p></div>
+      </div>
+    </div>
+    <div class="source">Paper §2.3, Fig. 5(b); code: apple/ml-simplefold <i>DiTBlock</i> (adaLN-Zero). The trunk stacks 8 to 36 of these blocks, depending on model size.</div>
+  </div>
+</section>
+
+<!-- 9 ======================================================== METHOD: training -->
+<section id="s-train">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Method</b> · training</div>
+      <h2>Trained like an image model, mostly on predicted structures</h2>
+    </header>
+    <div class="body train">
+      <div>
+        <h3>Training data</h3>
+        <div class="dbars">
+          <div class="name">PDB<span class="muted">experimental</span></div>
+          <div class="track"><div class="fill exp" style="width:8px"></div><span class="val">160K</span></div>
+          <div class="name">SwissProt<span class="muted">AlphaFold2 predictions</span></div>
+          <div class="track"><div class="fill" style="width:14px"></div><span class="val">270K</span></div>
+          <div class="name">AFESM<span class="muted">AF2 + ESMFold predictions</span></div>
+          <div class="track"><div class="fill" style="width:97px"></div><span class="val">1.9M</span></div>
+          <div class="name">AFESM-E<span class="muted">3B model only</span></div>
+          <div class="track"><div class="fill" style="width:440px"></div><span class="val">8.6M</span></div>
+        </div>
+        <p class="tnote">Predictions kept only when the predicting model was confident (high pLDDT).</p>
+      </div>
+      <div>
+        <h3>Loss</h3>
+        <div class="tex lossbig" data-tex="\mathcal{L} = \mathcal{L}_{FM} + \alpha(t)\,\mathcal{L}_{LDDT}"></div>
+        <div class="lossparts">
+          <div><span class="tex" data-tex="\mathcal{L}_{FM}"></span></div><div>match the velocity (the arrows from the flow slide)</div>
+          <div><span class="tex" data-tex="\mathcal{L}_{LDDT}"></span></div><div>get distances between nearby atoms right, on the one-step guess <span class="tex" data-tex="\hat{x} = x_t + (1-t)\,v_\theta"></span></div>
+        </div>
+        <div class="stages">
+          <div class="sh" aria-hidden="true">&nbsp;</div><div class="sh">data</div><div class="sh">max length</div><div class="sh">LDDT weight</div>
+          <div class="sn">Pretrain</div><div>all of it</div><div>256</div><div>1</div>
+          <div class="sn">Finetune</div><div>PDB, SwissProt</div><div>512</div><div>1 → 5</div>
+        </div>
+      </div>
+    </div>
+    <div class="source">Paper §2.2, §2.6, §4.1. Also borrowed from image diffusion: timesteps sampled mostly near clean data (SD3-style logit-normal), random rotations, EMA weights.</div>
+  </div>
+</section>
+
+<!-- 10 ======================================================== METHOD: what replaced the AF2 parts -->
+<section id="s-swaps">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Method</b> · what took their place</div>
+      <h2>Each piece of AlphaFold2 machinery gets a generic substitute</h2>
+    </header>
+    <div class="body swaps">
+      <div>
+        <div class="swap"><div class="from">MSA search</div><div class="arr">→</div>
+          <div class="to">Protein language model<span class="muted">ESM2-3B, frozen</span></div></div>
+        <div class="swap"><div class="from">Pair table + triangles</div><div class="arr">→</div>
+          <div class="to">Plain attention<span class="muted">one vector per residue</span></div></div>
+        <div class="swap"><div class="from">Equivariant layers</div><div class="arr">→</div>
+          <div class="to">Random rotations<span class="muted">data augmentation in training</span></div></div>
+        <div class="swap"><div class="from">Many custom losses</div><div class="arr">→</div>
+          <div class="to">One generative loss<span class="muted">flow matching + LDDT</span></div></div>
+      </div>
+      <figure>
+        <img src="assets/img/paper_simplefold_vs_alphafold.png" alt="AlphaFold2 Evoformer block versus SimpleFold transformer block">
+        <figcaption>Top: one AlphaFold2 Evoformer block (×48). Bottom: one SimpleFold block (×28 in the 700M model's trunk). Paper Fig. 5.</figcaption>
+      </figure>
+    </div>
+    <div class="source">Paper §2.3 and §2.6. Training data: ~160K PDB experimental structures + ~8.6M structures predicted by AlphaFold2 / ESMFold (3B model).</div>
+  </div>
+</section>
+
+<!-- 11 ======================================================== RESULTS: accuracy -->
+<section id="s-acc">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Results</b> · accuracy</div>
+      <h2>Close to AlphaFold2 without its machinery. Not better.</h2>
+    </header>
+    <div class="body results">
+      <div class="bench">
+        <h3>CAMEO22</h3>
+        <div class="desc">183 recent structures, typical difficulty</div>
+        <div class="bars">
+          <div class="name">AlphaFold2</div><div class="track"><div class="fill af" style="width:86.3%"></div></div><div class="val">0.863</div>
+          <div class="name">ESMFold</div><div class="track"><div class="fill" style="width:85.3%"></div></div><div class="val">0.853</div>
+          <div class="name"><b>SimpleFold-3B</b></div><div class="track"><div class="fill sf" style="width:83.7%"></div></div><div class="val">0.837</div>
+          <div class="name">SimpleFold-100M</div><div class="track"><div class="fill sf" style="width:80.3%;opacity:.55"></div></div><div class="val">0.803</div>
+          <div></div><div class="axis"><span>0</span><span>0.5</span><span>1</span></div><div></div>
+        </div>
+      </div>
+      <div class="bench">
+        <h3>CASP14</h3>
+        <div class="desc">70 hard targets from the blind competition</div>
+        <div class="bars">
+          <div class="name">AlphaFold2</div><div class="track"><div class="fill af" style="width:84.5%"></div></div><div class="val">0.845</div>
+          <div class="name">ESMFold</div><div class="track"><div class="fill" style="width:70.1%"></div></div><div class="val">0.701</div>
+          <div class="name"><b>SimpleFold-3B</b></div><div class="track"><div class="fill sf" style="width:72.0%"></div></div><div class="val">0.720</div>
+          <div class="name">SimpleFold-100M</div><div class="track"><div class="fill sf" style="width:61.1%;opacity:.55"></div></div><div class="val">0.611</div>
+          <div></div><div class="axis"><span>0</span><span>0.5</span><span>1</span></div><div></div>
+        </div>
+      </div>
+    </div>
+    <div class="source">Mean TM-score, 1 = perfect global match (paper Table 1). Baselines rerun by the authors via ColabFold; AlphaFold2 uses MSAs, SimpleFold and ESMFold do not.</div>
+  </div>
+</section>
+
+<!-- 12 ======================================================== RESULTS: what you gain -->
+<section id="s-gain">
+  <div class="frame">
+    <header>
+      <div class="kicker"><b>Results</b> · what you gain</div>
+      <h2>Many plausible shapes, at a fraction of the compute</h2>
+    </header>
+    <div class="body gains">
+      <figure>
+        <img src="assets/img/paper_fig1c_ensemble.png" alt="Overlay of several generated conformations of 6NDW chain B">
+        <div>
+          <h3>Ensembles for free</h3>
+          <p class="note">Same sequence, different starting noise, different conformations. Proteins move, and a regression model can only give one answer.</p>
+          <p class="note" style="margin-top:18px">Best reported result on the apo/holo two-state benchmark.</p>
+        </div>
+      </figure>
+      <div>
+        <h3>Compute per forward pass <span class="muted" style="font-weight:400">(GFLOPs)</span></h3>
+        <div class="gflops">
+          <div class="name">AlphaFold2<span class="muted">95M params</span></div>
+          <div class="track"><div class="fill af" style="width:440px"></div><span class="val">30,935</span></div>
+          <div class="name"><b>SimpleFold-3B</b><span class="muted">2.86B params</span></div>
+          <div class="track"><div class="fill sf" style="width:20px"></div><span class="val">1,382</span></div>
+          <div class="name">SimpleFold-100M<span class="muted">94M params</span></div>
+          <div class="track"><div class="fill sf" style="width:3px"></div><span class="val">66</span></div>
+        </div>
+        <p class="laptop">30× the parameters, 22× less compute.<br><span class="muted">The 100M model folds a 512-residue protein in ~9 s on a MacBook.</span></p>
+      </div>
+    </div>
+    <div class="source">Left: paper Fig. 1(c), 6NDW chain B, model finetuned on molecular dynamics data; Table 3. Right: paper Table 5 (forward GFLOPs) and Fig. 1(e) (M2 Max).</div>
+  </div>
+</section>
+
+<!-- 13 ======================================================== TAKEAWAY -->
+<section id="s-end">
+  <div class="end">
+    <div class="left">
+      <div class="kicker">Takeaway</div>
+      <h2>Folding is (mostly) text-to-image</h2>
+      <p class="line">A general transformer, a flow-matching objective and a lot of data get within a few percent of AlphaFold2, with none of its special parts and a fraction of the compute.</p>
+      <p class="qs">Questions?</p>
+    </div>
+    <div class="stage">
+      <canvas id="end-canvas" aria-label="The noise-to-protein animation, replayed"></canvas>
+      <div class="stage-caption">t = <span class="tval" id="end-t">0.00</span> · same protein, same recipe</div>
+    </div>
+  </div>
+</section>
+
+</div>
+</div>
+
+<script src="vendor/reveal/reveal.js"></script>
+<script src="vendor/katex/katex.min.js"></script>
+<script src="vendor/3dmol/3Dmol-min.js"></script>
+<script src="assets/data/ttr.js"></script>
+<script src="assets/data/wave.js"></script>
+<script src="js/fold-anim.js"></script>
+<script src="js/flow-toy.js"></script>
+<script src="js/deck.js"></script>
+</body>
+</html>
